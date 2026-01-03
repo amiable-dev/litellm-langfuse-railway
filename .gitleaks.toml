@@ -1,0 +1,43 @@
+# Gitleaks configuration to reduce false positives
+# https://github.com/gitleaks/gitleaks
+
+title = "litellm-langfuse-railway gitleaks config"
+
+[extend]
+# Extend the default gitleaks config
+useDefault = true
+
+[allowlist]
+description = "Allowlist for known false positives"
+
+# Allow placeholder values in documentation and examples
+regexes = [
+    '''your-api-key-here''',
+    '''changeme''',
+    '''<YOUR_KEY>''',
+    '''<YOUR_.*>''',
+    '''placeholder''',
+    '''example\.com''',
+    '''sk-proj-example.*''',
+    '''LITELLM_MASTER_KEY=.*changeme''',
+]
+
+# Allow specific paths that are documentation-only
+paths = [
+    '''README\.md''',
+    '''docs/.*\.md''',
+    '''RUNBOOK\.md''',
+    '''UPGRADE\.md''',
+]
+
+# Allow specific commits (if needed)
+# commits = [
+#     "abc123...",
+# ]
+
+[[rules]]
+id = "railway-placeholder"
+description = "Railway placeholder variables"
+regex = '''\$\{\{.*\}\}'''
+[rules.allowlist]
+regexes = ['''\$\{\{.*\}\}''']

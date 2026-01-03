@@ -2,8 +2,22 @@
 
 Production-ready LLM gateway with full observability on Railway.
 
+[![CI](https://github.com/amiable-dev/litellm-langfuse-railway/actions/workflows/validate-templates.yml/badge.svg)](https://github.com/amiable-dev/litellm-langfuse-railway/actions/workflows/validate-templates.yml)
+[![Security](https://github.com/amiable-dev/litellm-langfuse-railway/actions/workflows/security.yml/badge.svg)](https://github.com/amiable-dev/litellm-langfuse-railway/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 [![Deploy Starter](https://railway.app/button.svg)](https://railway.app/template/STARTER_ID)
 [![Deploy Production](https://railway.app/button.svg)](https://railway.app/template/PRODUCTION_ID)
+
+## Supported Versions
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| LiteLLM | v1.56.0+ | OpenAI-compatible gateway |
+| Langfuse | v3.x | Observability platform |
+| PostgreSQL | 15+ | Primary database |
+| ClickHouse | Latest | Analytics (Langfuse) |
+| Redis | 7+ | Caching layer |
 
 ## What Is This?
 
@@ -173,12 +187,23 @@ response = client.chat.completions.create(
 
 ## Contributing
 
-Contributions welcome! Please:
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick start:**
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make your changes
-4. Submit a pull request
+4. Validate locally (`taplo check`, `yamllint`)
+5. Submit a pull request
+
+**Looking for something to work on?** Check issues labeled [`good first issue`](https://github.com/amiable-dev/litellm-langfuse-railway/labels/good%20first%20issue) or [`help wanted`](https://github.com/amiable-dev/litellm-langfuse-railway/labels/help%20wanted).
+
+## Support
+
+- [GitHub Discussions](https://github.com/amiable-dev/litellm-langfuse-railway/discussions) - Questions and ideas
+- [GitHub Issues](https://github.com/amiable-dev/litellm-langfuse-railway/issues) - Bug reports and feature requests
+- [Security Policy](SECURITY.md) - Report vulnerabilities privately
 
 ## License
 

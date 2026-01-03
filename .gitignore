@@ -31,3 +31,14 @@ logs/
 *.pem
 *.key
 secrets/
+credentials/
+
+# Railway-specific
+railway.env
+.railway/
+*.railway.json
+
+# API keys and tokens
+.env.local
+.env.*.local
+*.token

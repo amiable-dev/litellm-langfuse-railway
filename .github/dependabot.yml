@@ -1,0 +1,19 @@
+# Dependabot configuration for automated dependency updates
+# Note: Only GitHub Actions updates - no pip (not a Python package)
+# For Docker image tag updates, consider RenovateBot with regex support
+
+version: 2
+
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore(ci)"
