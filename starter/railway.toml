@@ -1,0 +1,178 @@
+[template]
+name = "LiteLLM + Langfuse - LLM Gateway with Full Observability"
+description = "Production-ready LLM gateway with unified API (100+ providers), cost tracking, rate limiting, and full observability via Langfuse. OpenTelemetry-native."
+icon = "https://raw.githubusercontent.com/BerriAI/litellm/main/docs/my-website/static/img/favicon.ico"
+tags = ["ai", "llm", "observability", "gateway", "opentelemetry", "langfuse", "litellm"]
+
+[[services]]
+name = "litellm"
+icon = "https://raw.githubusercontent.com/BerriAI/litellm/main/docs/my-website/static/img/favicon.ico"
+
+[services.litellm.source]
+image = "docker.litellm.ai/berriai/litellm-database:main-stable"
+
+[services.litellm.deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.litellm.env]
+PORT = { default = "4000" }
+LITELLM_MASTER_KEY = { description = "Admin API key (must start with sk-)", generate = "secret" }
+LITELLM_SALT_KEY = { description = "Encryption key for stored credentials", generate = "secret" }
+DATABASE_URL = { description = "PostgreSQL connection string", reference = "postgres.DATABASE_URL" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_PASSWORD = { reference = "redis.REDIS_PASSWORD" }
+LANGFUSE_PUBLIC_KEY = { description = "Langfuse public key for tracing" }
+LANGFUSE_SECRET_KEY = { description = "Langfuse secret key for tracing" }
+LANGFUSE_HOST = { description = "Langfuse URL", reference = "langfuse-web.RAILWAY_PUBLIC_DOMAIN", transform = "https://${value}" }
+STORE_MODEL_IN_DB = { default = "True" }
+UI_USERNAME = { default = "admin" }
+UI_PASSWORD = { description = "Admin UI password", generate = "secret" }
+
+[[services]]
+name = "langfuse-web"
+icon = "https://langfuse.com/favicon.ico"
+
+[services.langfuse-web.source]
+image = "langfuse/langfuse:3"
+
+[services.langfuse-web.deploy]
+healthcheckPath = "/api/public/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.langfuse-web.env]
+PORT = { default = "3000" }
+NEXTAUTH_URL = { description = "Langfuse public URL", reference = "langfuse-web.RAILWAY_PUBLIC_DOMAIN", transform = "https://${value}" }
+NEXTAUTH_SECRET = { description = "NextAuth secret", generate = "secret" }
+SALT = { description = "Encryption salt", generate = "secret" }
+ENCRYPTION_KEY = { description = "32-byte hex encryption key", generate = "secret" }
+DATABASE_URL = { reference = "postgres.DATABASE_URL" }
+CLICKHOUSE_URL = { reference = "clickhouse.CLICKHOUSE_HTTP_URL" }
+CLICKHOUSE_MIGRATION_URL = { reference = "clickhouse.CLICKHOUSE_NATIVE_URL" }
+CLICKHOUSE_USER = { reference = "clickhouse.CLICKHOUSE_USER" }
+CLICKHOUSE_PASSWORD = { reference = "clickhouse.CLICKHOUSE_PASSWORD" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_AUTH = { reference = "redis.REDIS_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT = { reference = "minio.MINIO_ENDPOINT" }
+LANGFUSE_S3_EVENT_UPLOAD_BUCKET = { default = "langfuse" }
+LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID = { reference = "minio.MINIO_ROOT_USER" }
+LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY = { reference = "minio.MINIO_ROOT_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE = { default = "true" }
+LANGFUSE_S3_EVENT_UPLOAD_REGION = { default = "us-east-1" }
+TELEMETRY_ENABLED = { default = "false" }
+
+[[services]]
+name = "langfuse-worker"
+icon = "https://langfuse.com/favicon.ico"
+
+[services.langfuse-worker.source]
+image = "langfuse/langfuse-worker:3"
+
+[services.langfuse-worker.deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.langfuse-worker.env]
+PORT = { default = "3030" }
+DATABASE_URL = { reference = "postgres.DATABASE_URL" }
+SALT = { reference = "langfuse-web.SALT" }
+ENCRYPTION_KEY = { reference = "langfuse-web.ENCRYPTION_KEY" }
+CLICKHOUSE_URL = { reference = "clickhouse.CLICKHOUSE_HTTP_URL" }
+CLICKHOUSE_MIGRATION_URL = { reference = "clickhouse.CLICKHOUSE_NATIVE_URL" }
+CLICKHOUSE_USER = { reference = "clickhouse.CLICKHOUSE_USER" }
+CLICKHOUSE_PASSWORD = { reference = "clickhouse.CLICKHOUSE_PASSWORD" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_AUTH = { reference = "redis.REDIS_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT = { reference = "minio.MINIO_ENDPOINT" }
+LANGFUSE_S3_EVENT_UPLOAD_BUCKET = { default = "langfuse" }
+LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID = { reference = "minio.MINIO_ROOT_USER" }
+LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY = { reference = "minio.MINIO_ROOT_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE = { default = "true" }
+LANGFUSE_S3_EVENT_UPLOAD_REGION = { default = "us-east-1" }
+TELEMETRY_ENABLED = { default = "false" }
+
+[[services]]
+name = "postgres"
+
+[services.postgres.source]
+image = "ghcr.io/railwayapp-templates/postgres-ssl:16"
+
+[services.postgres.deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.postgres.volume]
+mountPath = "/var/lib/postgresql/data"
+
+[services.postgres.env]
+POSTGRES_USER = { default = "postgres" }
+POSTGRES_PASSWORD = { generate = "secret" }
+POSTGRES_DB = { default = "litellm_langfuse" }
+DATABASE_URL = { default = "postgresql://${{POSTGRES_USER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{POSTGRES_DB}}" }
+
+[[services]]
+name = "clickhouse"
+
+[services.clickhouse.source]
+image = "clickhouse/clickhouse-server:24"
+
+[services.clickhouse.deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.clickhouse.volume]
+mountPath = "/var/lib/clickhouse"
+
+[services.clickhouse.env]
+CLICKHOUSE_DB = { default = "default" }
+CLICKHOUSE_USER = { default = "clickhouse" }
+CLICKHOUSE_PASSWORD = { generate = "secret" }
+CLICKHOUSE_HTTP_URL = { default = "http://${{RAILWAY_PRIVATE_DOMAIN}}:8123" }
+CLICKHOUSE_NATIVE_URL = { default = "clickhouse://${{RAILWAY_PRIVATE_DOMAIN}}:9000" }
+
+[[services]]
+name = "redis"
+
+[services.redis.source]
+image = "bitnami/redis:7.2"
+
+[services.redis.deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.redis.volume]
+mountPath = "/bitnami/redis/data"
+
+[services.redis.env]
+REDIS_PASSWORD = { generate = "secret" }
+REDIS_HOST = { default = "${{RAILWAY_PRIVATE_DOMAIN}}" }
+REDIS_PORT = { default = "6379" }
+ALLOW_EMPTY_PASSWORD = { default = "no" }
+
+[[services]]
+name = "minio"
+
+[services.minio.source]
+image = "minio/minio"
+
+[services.minio.deploy]
+startCommand = "minio server /data --console-address :9001"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.minio.volume]
+mountPath = "/data"
+
+[services.minio.env]
+MINIO_ROOT_USER = { default = "minioadmin" }
+MINIO_ROOT_PASSWORD = { generate = "secret" }
+MINIO_ENDPOINT = { default = "http://${{RAILWAY_PRIVATE_DOMAIN}}:9000" }

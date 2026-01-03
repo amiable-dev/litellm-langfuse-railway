@@ -1,0 +1,100 @@
+# LiteLLM Proxy Configuration
+# This config is loaded from environment variables or can be extended via the Admin UI
+# Docs: https://docs.litellm.ai/docs/proxy/configs
+
+# Model list - Add your models here or via the Admin UI
+# Models added via UI are stored in PostgreSQL (STORE_MODEL_IN_DB=True)
+model_list: []
+  # Example configurations (uncomment and customize):
+  #
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: openai/gpt-4o
+  #     api_key: os.environ/OPENAI_API_KEY
+  #
+  # - model_name: claude-sonnet
+  #   litellm_params:
+  #     model: anthropic/claude-sonnet-4-20250514
+  #     api_key: os.environ/ANTHROPIC_API_KEY
+  #
+  # - model_name: gemini-pro
+  #   litellm_params:
+  #     model: gemini/gemini-1.5-pro
+  #     api_key: os.environ/GOOGLE_API_KEY
+  #
+  # Load balancing example (multiple deployments):
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: azure/gpt-4o-deployment-1
+  #     api_base: os.environ/AZURE_API_BASE_1
+  #     api_key: os.environ/AZURE_API_KEY_1
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: azure/gpt-4o-deployment-2
+  #     api_base: os.environ/AZURE_API_BASE_2
+  #     api_key: os.environ/AZURE_API_KEY_2
+
+# LiteLLM settings
+litellm_settings:
+  # Enable Langfuse callback for tracing
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  
+  # Caching (uses Redis when available)
+  cache: True
+  cache_params:
+    type: redis
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+    password: os.environ/REDIS_PASSWORD
+  
+  # Request timeout (seconds)
+  request_timeout: 600
+  
+  # Retry settings
+  num_retries: 3
+  retry_after: 5
+  
+  # Drop unmapped params instead of erroring
+  drop_params: True
+
+# General settings
+general_settings:
+  # Master key from environment
+  master_key: os.environ/LITELLM_MASTER_KEY
+  
+  # Database for storing keys, models, spend
+  database_url: os.environ/DATABASE_URL
+  
+  # Store models in DB (allows UI management)
+  store_model_in_db: True
+  
+  # Enable Admin UI
+  enable_ui: True
+  
+  # Background health checks
+  background_health_checks: True
+  health_check_interval: 300
+
+# Router settings for load balancing
+router_settings:
+  # Load balancing strategy
+  routing_strategy: simple-shuffle
+  
+  # Fallback models
+  enable_fallbacks: True
+  
+  # Retry on specific errors
+  retry_policy:
+    AuthenticationErrorRetries: 0
+    TimeoutErrorRetries: 2
+    RateLimitErrorRetries: 3
+    ContentFilterErrorRetries: 0
+    InternalServerErrorRetries: 2
+
+# Environment variables reference:
+# - LITELLM_MASTER_KEY: Admin API key (required, must start with sk-)
+# - LITELLM_SALT_KEY: Encryption salt for stored credentials
+# - DATABASE_URL: PostgreSQL connection string
+# - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD: Redis configuration
+# - LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST: Langfuse tracing

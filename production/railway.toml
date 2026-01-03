@@ -1,0 +1,313 @@
+# =============================================================================
+# LiteLLM + Langfuse Production Stack
+# =============================================================================
+# A production-ready LLM gateway with full observability, automated backups,
+# and health monitoring.
+#
+# Services (9 total):
+#   - litellm: LLM Gateway/Proxy (100+ providers)
+#   - langfuse-web: Observability UI + API
+#   - langfuse-worker: Async trace processing
+#   - postgres: Transactional database (shared)
+#   - clickhouse: Analytics database (traces, scores)
+#   - redis: Caching + queues (with AOF persistence)
+#   - minio: Object storage (S3-compatible)
+#   - backup-service: Automated PostgreSQL + ClickHouse backups
+#   - health-monitor: Service health checks + alerting
+# =============================================================================
+
+[template]
+name = "LiteLLM + Langfuse Production - LLM Gateway with Full Observability"
+description = "Production-ready LLM gateway with unified API (100+ providers), cost tracking, automated backups, health monitoring, and full observability via Langfuse."
+icon = "https://raw.githubusercontent.com/BerriAI/litellm/main/docs/my-website/static/img/favicon.ico"
+tags = ["ai", "llm", "observability", "gateway", "opentelemetry", "langfuse", "litellm", "production"]
+
+# =============================================================================
+# LiteLLM - LLM Gateway
+# =============================================================================
+[[services]]
+name = "litellm"
+icon = "https://raw.githubusercontent.com/BerriAI/litellm/main/docs/my-website/static/img/favicon.ico"
+
+[services.litellm.source]
+image = "ghcr.io/berriai/litellm-database:main-stable"
+
+[services.litellm.deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+
+[services.litellm.env]
+PORT = { default = "4000" }
+HOST = { default = "0.0.0.0" }
+LITELLM_MASTER_KEY = { description = "Admin API key for virtual key creation", generate = "secret" }
+LITELLM_SALT_KEY = { description = "Encryption key for stored credentials (immutable)", generate = "secret" }
+DATABASE_URL = { description = "PostgreSQL connection string", reference = "postgres.DATABASE_URL" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_PASSWORD = { reference = "redis.REDIS_PASSWORD" }
+LANGFUSE_PUBLIC_KEY = { description = "Langfuse public key (get from Langfuse UI after deploy)" }
+LANGFUSE_SECRET_KEY = { description = "Langfuse secret key (get from Langfuse UI after deploy)" }
+LANGFUSE_HOST = { description = "Langfuse URL", reference = "langfuse-web.RAILWAY_PUBLIC_DOMAIN", transform = "https://${value}" }
+STORE_MODEL_IN_DB = { default = "True" }
+UI_USERNAME = { default = "admin" }
+UI_PASSWORD = { description = "Admin UI password", generate = "secret" }
+# Production settings
+LITELLM_LOG_LEVEL = { default = "INFO" }
+LITELLM_TELEMETRY = { default = "false" }
+
+# =============================================================================
+# Langfuse Web - Observability UI
+# =============================================================================
+[[services]]
+name = "langfuse-web"
+icon = "https://langfuse.com/favicon.ico"
+
+[services.langfuse-web.source]
+image = "langfuse/langfuse:3"
+
+[services.langfuse-web.deploy]
+healthcheckPath = "/api/public/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+
+[services.langfuse-web.env]
+PORT = { default = "3000" }
+NEXTAUTH_URL = { description = "Langfuse public URL", reference = "langfuse-web.RAILWAY_PUBLIC_DOMAIN", transform = "https://${value}" }
+NEXTAUTH_SECRET = { description = "NextAuth session secret", generate = "secret" }
+SALT = { description = "Encryption salt", generate = "secret" }
+ENCRYPTION_KEY = { description = "32-byte hex encryption key", generate = "secret" }
+DATABASE_URL = { reference = "postgres.DATABASE_URL" }
+CLICKHOUSE_URL = { reference = "clickhouse.CLICKHOUSE_HTTP_URL" }
+CLICKHOUSE_MIGRATION_URL = { reference = "clickhouse.CLICKHOUSE_NATIVE_URL" }
+CLICKHOUSE_USER = { reference = "clickhouse.CLICKHOUSE_USER" }
+CLICKHOUSE_PASSWORD = { reference = "clickhouse.CLICKHOUSE_PASSWORD" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_AUTH = { reference = "redis.REDIS_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT = { reference = "minio.MINIO_ENDPOINT" }
+LANGFUSE_S3_EVENT_UPLOAD_BUCKET = { default = "langfuse" }
+LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID = { reference = "minio.MINIO_ROOT_USER" }
+LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY = { reference = "minio.MINIO_ROOT_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE = { default = "true" }
+LANGFUSE_S3_EVENT_UPLOAD_REGION = { default = "us-east-1" }
+TELEMETRY_ENABLED = { default = "false" }
+# Production settings
+LANGFUSE_LOG_LEVEL = { default = "info" }
+
+# =============================================================================
+# Langfuse Worker - Async Processing
+# =============================================================================
+[[services]]
+name = "langfuse-worker"
+icon = "https://langfuse.com/favicon.ico"
+
+[services.langfuse-worker.source]
+image = "langfuse/langfuse-worker:3"
+
+[services.langfuse-worker.deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+
+[services.langfuse-worker.env]
+PORT = { default = "3030" }
+DATABASE_URL = { reference = "postgres.DATABASE_URL" }
+SALT = { reference = "langfuse-web.SALT" }
+ENCRYPTION_KEY = { reference = "langfuse-web.ENCRYPTION_KEY" }
+CLICKHOUSE_URL = { reference = "clickhouse.CLICKHOUSE_HTTP_URL" }
+CLICKHOUSE_MIGRATION_URL = { reference = "clickhouse.CLICKHOUSE_NATIVE_URL" }
+CLICKHOUSE_USER = { reference = "clickhouse.CLICKHOUSE_USER" }
+CLICKHOUSE_PASSWORD = { reference = "clickhouse.CLICKHOUSE_PASSWORD" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_AUTH = { reference = "redis.REDIS_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT = { reference = "minio.MINIO_ENDPOINT" }
+LANGFUSE_S3_EVENT_UPLOAD_BUCKET = { default = "langfuse" }
+LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID = { reference = "minio.MINIO_ROOT_USER" }
+LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY = { reference = "minio.MINIO_ROOT_PASSWORD" }
+LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE = { default = "true" }
+LANGFUSE_S3_EVENT_UPLOAD_REGION = { default = "us-east-1" }
+TELEMETRY_ENABLED = { default = "false" }
+
+# =============================================================================
+# PostgreSQL - Transactional Database
+# =============================================================================
+[[services]]
+name = "postgres"
+
+[services.postgres.source]
+image = "ghcr.io/railwayapp-templates/postgres-ssl:16"
+
+[services.postgres.deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[services.postgres.volume]
+mountPath = "/var/lib/postgresql/data"
+
+[services.postgres.env]
+POSTGRES_USER = { default = "postgres" }
+POSTGRES_PASSWORD = { generate = "secret" }
+POSTGRES_DB = { default = "litellm_langfuse" }
+DATABASE_URL = { default = "postgresql://${{POSTGRES_USER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{POSTGRES_DB}}" }
+# Production tuning
+POSTGRES_INITDB_ARGS = { default = "--encoding=UTF8 --locale=C" }
+
+# =============================================================================
+# ClickHouse - Analytics Database
+# =============================================================================
+[[services]]
+name = "clickhouse"
+
+[services.clickhouse.source]
+image = "clickhouse/clickhouse-server:24"
+
+[services.clickhouse.deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[services.clickhouse.volume]
+mountPath = "/var/lib/clickhouse"
+
+[services.clickhouse.env]
+CLICKHOUSE_DB = { default = "default" }
+CLICKHOUSE_USER = { default = "clickhouse" }
+CLICKHOUSE_PASSWORD = { generate = "secret" }
+CLICKHOUSE_HTTP_URL = { default = "http://${{RAILWAY_PRIVATE_DOMAIN}}:8123" }
+CLICKHOUSE_NATIVE_URL = { default = "clickhouse://${{RAILWAY_PRIVATE_DOMAIN}}:9000" }
+
+# =============================================================================
+# Redis - Caching & Queues (with AOF persistence)
+# =============================================================================
+[[services]]
+name = "redis"
+
+[services.redis.source]
+image = "bitnami/redis:7.2"
+
+[services.redis.deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[services.redis.volume]
+mountPath = "/bitnami/redis/data"
+
+[services.redis.env]
+REDIS_PASSWORD = { generate = "secret" }
+REDIS_HOST = { default = "${{RAILWAY_PRIVATE_DOMAIN}}" }
+REDIS_PORT = { default = "6379" }
+ALLOW_EMPTY_PASSWORD = { default = "no" }
+# Production: Enable AOF persistence
+REDIS_AOF_ENABLED = { default = "yes" }
+REDIS_APPENDONLY = { default = "yes" }
+REDIS_APPENDFSYNC = { default = "everysec" }
+# Memory management
+REDIS_MAXMEMORY = { default = "256mb" }
+REDIS_MAXMEMORY_POLICY = { default = "allkeys-lru" }
+
+# =============================================================================
+# MinIO - Object Storage (S3-compatible)
+# =============================================================================
+[[services]]
+name = "minio"
+
+[services.minio.source]
+image = "minio/minio"
+
+[services.minio.deploy]
+startCommand = "minio server /data --console-address :9001"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[services.minio.volume]
+mountPath = "/data"
+
+[services.minio.env]
+MINIO_ROOT_USER = { default = "minioadmin" }
+MINIO_ROOT_PASSWORD = { generate = "secret" }
+MINIO_ENDPOINT = { default = "http://${{RAILWAY_PRIVATE_DOMAIN}}:9000" }
+
+# =============================================================================
+# Backup Service - Automated Database Backups
+# =============================================================================
+[[services]]
+name = "backup-service"
+icon = "https://cdn-icons-png.flaticon.com/512/2344/2344284.png"
+
+# Railway will auto-detect Dockerfile in ./backup-service/ directory
+[services.backup-service.source]
+# No image specified - Railway builds from backup-service/Dockerfile
+
+[services.backup-service.deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.backup-service.env]
+PORT = { default = "8080" }
+# Database connections
+DATABASE_URL = { reference = "postgres.DATABASE_URL" }
+CLICKHOUSE_HOST = { reference = "clickhouse.RAILWAY_PRIVATE_DOMAIN" }
+CLICKHOUSE_PORT = { default = "8123" }
+CLICKHOUSE_USER = { reference = "clickhouse.CLICKHOUSE_USER" }
+CLICKHOUSE_PASSWORD = { reference = "clickhouse.CLICKHOUSE_PASSWORD" }
+CLICKHOUSE_DB = { reference = "clickhouse.CLICKHOUSE_DB" }
+# MinIO storage
+MINIO_ENDPOINT = { default = "${{minio.RAILWAY_PRIVATE_DOMAIN}}:9000" }
+MINIO_ACCESS_KEY = { reference = "minio.MINIO_ROOT_USER" }
+MINIO_SECRET_KEY = { reference = "minio.MINIO_ROOT_PASSWORD" }
+MINIO_SECURE = { default = "false" }
+BACKUP_BUCKET = { default = "backups" }
+# Backup schedule: hourly, daily, weekly
+BACKUP_SCHEDULE = { default = "daily", description = "Backup frequency: hourly, daily, or weekly" }
+BACKUP_HOUR = { default = "3", description = "Hour of day for daily/weekly backups (UTC, 0-23)" }
+BACKUP_RETENTION_DAYS = { default = "7", description = "Days to keep old backups" }
+BACKUP_ON_STARTUP = { default = "true", description = "Run backup immediately on service start" }
+# Alerting (optional)
+ALERT_WEBHOOK_URL = { description = "Slack/Discord webhook URL for backup alerts (optional)" }
+ALERT_ON_SUCCESS = { default = "false", description = "Send alerts on successful backups" }
+
+# =============================================================================
+# Health Monitor - Service Health Checks & Alerting
+# =============================================================================
+[[services]]
+name = "health-monitor"
+icon = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"
+
+# Railway will auto-detect Dockerfile in ./health-monitor/ directory
+[services.health-monitor.source]
+# No image specified - Railway builds from health-monitor/Dockerfile
+
+[services.health-monitor.deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[services.health-monitor.env]
+PORT = { default = "8080" }
+# Service endpoints (internal network)
+LITELLM_URL = { default = "http://litellm.railway.internal:4000" }
+LANGFUSE_URL = { default = "http://langfuse-web.railway.internal:3000" }
+LANGFUSE_WORKER_URL = { default = "http://langfuse-worker.railway.internal:3030" }
+CLICKHOUSE_URL = { reference = "clickhouse.CLICKHOUSE_HTTP_URL" }
+# Database connections
+DATABASE_URL = { reference = "postgres.DATABASE_URL" }
+REDIS_HOST = { reference = "redis.REDIS_HOST" }
+REDIS_PORT = { reference = "redis.REDIS_PORT" }
+REDIS_PASSWORD = { reference = "redis.REDIS_PASSWORD" }
+# Monitoring settings
+CHECK_INTERVAL = { default = "60", description = "Seconds between health checks" }
+ALERT_COOLDOWN = { default = "15", description = "Minutes between repeated alerts for same service" }
+FAILURE_THRESHOLD = { default = "3", description = "Consecutive failures before alerting" }
+# Alerting (optional)
+ALERT_WEBHOOK_URL = { description = "Slack/Discord webhook URL for health alerts (optional)" }
+PAGERDUTY_ROUTING_KEY = { description = "PagerDuty Events API v2 routing key (optional)" }
