@@ -1,0 +1,22 @@
+# CODEOWNERS for litellm-langfuse-railway
+# These owners will be requested for review on PRs
+
+# Default owners for everything
+* @amiable-dev/maintainers
+
+# Template definitions (critical)
+*/railway.toml @amiable-dev/maintainers
+
+# CI/CD workflows
+.github/ @amiable-dev/maintainers
+
+# Shared configuration
+shared/litellm/config.yaml @amiable-dev/maintainers
+
+# Docker configuration
+**/Dockerfile @amiable-dev/maintainers
+**/docker-compose.yml @amiable-dev/maintainers
+
+# Security-sensitive files
+SECURITY.md @amiable-dev/maintainers
+.gitleaks.toml @amiable-dev/maintainers
