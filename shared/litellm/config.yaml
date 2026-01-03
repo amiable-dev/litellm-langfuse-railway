@@ -39,7 +39,7 @@ litellm_settings:
   # Enable Langfuse callback for tracing
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]
-  
+
   # Caching (uses Redis when available)
   cache: True
   cache_params:
@@ -47,14 +47,14 @@ litellm_settings:
     host: os.environ/REDIS_HOST
     port: os.environ/REDIS_PORT
     password: os.environ/REDIS_PASSWORD
-  
+
   # Request timeout (seconds)
   request_timeout: 600
-  
+
   # Retry settings
   num_retries: 3
   retry_after: 5
-  
+
   # Drop unmapped params instead of erroring
   drop_params: True
 
@@ -62,16 +62,16 @@ litellm_settings:
 general_settings:
   # Master key from environment
   master_key: os.environ/LITELLM_MASTER_KEY
-  
+
   # Database for storing keys, models, spend
   database_url: os.environ/DATABASE_URL
-  
+
   # Store models in DB (allows UI management)
   store_model_in_db: True
-  
+
   # Enable Admin UI
   enable_ui: True
-  
+
   # Background health checks
   background_health_checks: True
   health_check_interval: 300
@@ -80,10 +80,10 @@ general_settings:
 router_settings:
   # Load balancing strategy
   routing_strategy: simple-shuffle
-  
+
   # Fallback models
   enable_fallbacks: True
-  
+
   # Retry on specific errors
   retry_policy:
     AuthenticationErrorRetries: 0

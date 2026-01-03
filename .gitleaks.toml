@@ -39,4 +39,5 @@ paths = [
 id = "railway-placeholder"
 description = "Railway placeholder variables"
 regex = '''\$\{\{.*\}\}'''
-allowlist = true
+[rules.allowlist]
+regexes = ['''\$\{\{.*\}\}''']
